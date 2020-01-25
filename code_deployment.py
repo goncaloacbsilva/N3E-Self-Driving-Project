@@ -8,18 +8,30 @@ def dt_code(text):
 
 def check_version():
     print("Checking version...")
-    return 0
+    return 1
+
+def all_commits(commits):
+    filenames = []
+    files = []
+    for commit in commits:
+        for file in commit.files:
+            if file.filename not in filenames:
+                files.append(file)
+                filenames.append(file.filename)
+    return files
 
 def read_changelog(g, repo_path):
     repo = g.get_repo(repo_path)
+    commits = repo.get_commits()
     if check_version() == 1:
         print("Reading Src Repository...")
-        files = repo.get_contents("")
+        files = all_commits(commits)
     else:
-        last_commit = repo.get_commits()[0]
+        last_commit = commits[0]
         code = last_commit.sha
         print("Reading File Changes... (Changelog) (Commit: "+code+")")
         files = last_commit.files
+        print(files)
     print("Files to change:")
     for file in files:
         print(file.filename)
@@ -32,7 +44,7 @@ def updater(files, repo):
     for file in files:
         file_link = repo.get_contents(file.filename).download_url
         print("Downloading " + file.filename + " from " + file_link)
-        #wget.download(file_link, file.filename)
+        wget.download(file_link, file.filename)
         n_up += 1
     print("=============")
     print("Deployment complete!")
@@ -41,4 +53,4 @@ def updater(files, repo):
 
 def deploy(g, repo_path):
     files, repo = read_changelog(g, repo_path)
-    #updater(files, repo)
+    updater(files, repo)
