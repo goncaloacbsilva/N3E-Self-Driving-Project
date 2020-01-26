@@ -52,6 +52,8 @@ def prepare_dir(filepath):
     last_path = ""
     for i in range(0, len(filepath)):
         if filepath[i] == filepath[-1]:
+            if path.exists(last_path+filepath[i]): #If file exists replace it
+                os.remove(last_path+filepath[i])
             break
         if not path.exists(last_path+filepath[i]):
             print("Creating directory: " + last_path+filepath[i])
