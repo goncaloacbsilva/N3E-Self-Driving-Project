@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 from os import path
 import json
+import wget
 
 def dt_code(text):
     step1 = text.split(" ")
@@ -81,7 +82,7 @@ def updater(files, repo):
     for file in files:
         file_link = repo.get_contents(file.filename).download_url
         print("Downloading " + file.filename + " from " + file_link)
-        #wget.download(file_link, file.filename)
+        wget.download(file_link, file.filename)
         n_up += 1
     print("=============")
     print("Deployment complete!")
