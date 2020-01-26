@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 from os import path
+import os
 import json
 import wget
 
@@ -34,15 +35,28 @@ def get_files_commit(commits, sha):
         if sha != 0:
             if commit.sha in sha:
                 for file in commit.files:
-                    if file.filename not in filenames:
-                        files.append(file)
-                        filenames.append(file.filename)
+                    if "MAIN/" in file.filename:
+                        if file.filename not in filenames:
+                            files.append(file)
+                            filenames.append(file.filename)
         else:
             for file in commit.files:
+                if "MAIN/" in file.filename:
                     if file.filename not in filenames:
                         files.append(file)
                         filenames.append(file.filename)
     return files
+
+def prepare_dir(filepath):
+    filepath = filepath.split("/")
+    last_path = ""
+    for i in range(0, len(filepath)):
+        if filepath[i] == filepath[-1]:
+            break
+        if not path.exists(last_path+filepath[i]):
+            print("Creating directory: " + last_path+filepath[i])
+            os.mkdir(last_path+filepath[i])
+        last_path += filepath[i] + "/"
 
 def update_calc(commits, current_ver): #How many versions do we need to parse
     cmts = []
@@ -82,6 +96,7 @@ def updater(files, repo):
     for file in files:
         file_link = repo.get_contents(file.filename).download_url
         print("Downloading " + file.filename + " from " + file_link)
+        prepare_dir(file.filename)
         wget.download(file_link, file.filename)
         n_up += 1
     print("=============")
