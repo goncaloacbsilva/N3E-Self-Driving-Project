@@ -1,13 +1,21 @@
 #! /usr/bin/env python3
+
+# ==> START POINT IS AT LINE 113 <==
+
+
 from os import path
 import os
 import json
-import wget
+import wget #Linux Package Downloader
+import shitty_lib.month as month #Month conversion
 
-def dt_code(text):
-    step1 = text.split(" ")
-    code = step1[3] + month.tonum(step1[2]) + step1[1] + step1[4].replace(":", "")
-    return code
+'''
+Function: check_config_file
+Args: None
+      
+Description: Checks if the config file exists.
+
+'''
 
 def check_config_file():
     print("Checking version...")
@@ -15,18 +23,43 @@ def check_config_file():
         return True
     else:
         return False
-    
+
+'''
+Function: parse_config
+Args: None
+      
+Description: Returns the version value from the config file
+
+'''
+
 def parse_config():
     with open('config.json') as json_file:
         data = json.load(json_file)
         version = data["version"]
     return version
 
+'''
+Function: write_ver
+Args: -version: Version SHA Code
+      
+Description: Writes version value to the config file, if the file doesn't exists a new one is created
+
+'''
+
 def write_ver(version):
     data = {}
     data['version'] = version
     with open('config.json', 'w+') as outfile:
         json.dump(data, outfile)
+
+'''
+Function: get_files_commit
+Args: - commits: Repository Commits Object
+      - sha: Can be an array of commits (SHA Code) or 0
+      
+Description: Parses all the files that suffered changes along the commits specified in the commits array. In case of sha = 0, parses all the files of the repository
+
+'''
 
 def get_files_commit(commits, sha):
     filenames = []
@@ -47,6 +80,14 @@ def get_files_commit(commits, sha):
                         filenames.append(file.filename)
     return files
 
+'''
+Function: prepare_dir
+Args: - filepath: File path
+      
+Description: Create all the directories and sub-directories where the file will be located if they are not already created. If the file already exists, the function will delete the older in order to replace it with the new one
+
+'''
+
 def prepare_dir(filepath):
     filepath = filepath.split("/")
     last_path = ""
@@ -60,7 +101,16 @@ def prepare_dir(filepath):
             os.mkdir(last_path+filepath[i])
         last_path += filepath[i] + "/"
 
-def update_calc(commits, current_ver): #How many versions do we need to parse
+'''
+Function: update_calc
+Args: - commits: Repository Commits Object
+      - current_ver: Current Version SHA Code
+      
+Description: Returns all the commits (SHA Code) that are needed to parse in order to update from the local version to the repository version
+
+'''
+
+def update_calc(commits, current_ver):
     cmts = []
     for commit in commits:
         if commit.sha == current_ver:
@@ -68,6 +118,16 @@ def update_calc(commits, current_ver): #How many versions do we need to parse
         else:
             cmts.append(commit.sha)
     return cmts
+
+'''
+Function: read_changelog
+Args: - g: Github API object generated with the token
+      - repo_path: Github repository path with the format OWNER/REPOSITORY
+      
+Description: Compares local version with the repository version and parses all file changes ocurred bettween the 2 versions. If the local version is unknown or the config.json file is missing the function parses all the repository files in order to perform a fresh install. 
+Returns an array of changed files objects and the repository object
+
+'''
 
 def read_changelog(g, repo_path):
     repo = g.get_repo(repo_path)
@@ -92,7 +152,15 @@ def read_changelog(g, repo_path):
     print("=============")
     return files, repo
         
-        
+'''
+Function: updater
+Args: - files: Array of file objects
+      - repo: Repository object
+      
+Description: Downloads and creates the additional or (in case of fresh install) all the filesystem specified with the array of files objects
+
+'''   
+
 def updater(files, repo):
     n_up = 0
     for file in files:
@@ -105,6 +173,15 @@ def updater(files, repo):
     print("Deployment complete!")
     print(str(n_up) + " files updated")
     
+
+'''
+Function: deploy
+Args: - g: Github API object generated with the token
+      - repo_path: Github repository path with the format OWNER/REPOSITORY
+      
+Description: CCDS Main function, reads changes on the repository files and updates the ROS Package
+
+'''
 
 def deploy(g, repo_path):
     files, repo = read_changelog(g, repo_path)
