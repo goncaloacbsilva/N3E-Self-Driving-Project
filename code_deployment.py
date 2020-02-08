@@ -1,7 +1,5 @@
 #! /usr/bin/env python3
 
-# ==> START POINT IS AT LINE 113 <==
-
 
 from os import path
 import os
@@ -101,6 +99,7 @@ def prepare_dir(filepath):
             os.mkdir(last_path+filepath[i])
         last_path += filepath[i] + "/"
 
+
 '''
 Function: update_calc
 Args: - commits: Repository Commits Object
@@ -145,10 +144,10 @@ def read_changelog(g, repo_path):
         files = get_files_commit(commits, needed_commits)
     print("Files to change:")
     for file in files:
-        print(file.filename)
+        print(file.filename + " / " + file.status)
     print("Repository Version: " + code)
     print("This version: " + this_ver)
-    write_ver(code)
+    write_ver(code)    
     print("=============")
     return files, repo
         
@@ -157,17 +156,22 @@ Function: updater
 Args: - files: Array of file objects
       - repo: Repository object
       
-Description: Downloads and creates the additional or (in case of fresh install) all the filesystem specified with the array of files objects
+Description: Downloads/creates and modifies the additional or (in case of fresh install) all the filesystem specified with the array of files objects
 
 '''   
 
 def updater(files, repo):
     n_up = 0
     for file in files:
-        file_link = repo.get_contents(file.filename).download_url
-        print("Downloading " + file.filename + " from " + file_link)
-        prepare_dir(file.filename)
-        wget.download(file_link, file.filename)
+        if file.status == "removed":
+            print("Removing " + file.filename)
+            if path.exists(file.filename):
+                os.remove(file.filename)
+        else:
+            file_link = repo.get_contents(file.filename).download_url
+            print("Downloading " + file.filename + " from " + file_link)
+            prepare_dir(file.filename)
+            wget.download(file_link, file.filename)
         n_up += 1
     print("=============")
     print("Deployment complete!")
