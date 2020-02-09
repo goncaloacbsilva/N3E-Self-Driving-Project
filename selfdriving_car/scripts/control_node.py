@@ -10,7 +10,7 @@ from std_msgs.msg import String
 import PID as pid_module
 
 def talker():
-    pub = rospy.Publisher('controlOut', String, queue_size=10)
+    pub = rospy.Publisher('Control_out', String, queue_size=10)
     rospy.init_node('control_node', anonymous=True)
     rate = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
@@ -33,11 +33,10 @@ stearAng = 0.0
 v = 2.0
 
 posicaocarro=0
-posiçaodesejada=1
+posicaodesejada=1
 
 if __name__ == '__main__':
     try:
         talker()
     except rospy.ROSInterruptException:
         main()
-
