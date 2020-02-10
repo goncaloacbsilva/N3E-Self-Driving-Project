@@ -6,6 +6,7 @@
 
 import rospy
 import time
+import random
 from std_msgs.msg import String
 import PID as pid_module
 
@@ -14,9 +15,11 @@ def talker():
     rospy.init_node('control_node', anonymous=True)
     rate = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
+	v = random.randint(0, 2)
         msg = str(v)+"/"+str(stearAng)
         rospy.loginfo(msg)
         pub.publish(msg)
+	time.sleep(0.5)
         rate.sleep()
 
 def main():
@@ -26,11 +29,10 @@ def main():
     pid.udpate (posicaocarro)
     stearAng = pid.output
 
-P = 2.0
+P = 2
 I = 4.0
 D = 0.1
-stearAng = 0.0
-v = 2.0
+stearAng = 0
 
 posicaocarro=0
 posicaodesejada=1
