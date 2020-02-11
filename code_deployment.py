@@ -79,16 +79,12 @@ def get_files_commit(commits, sha):
                 for file in commit.files:
                     if "selfdriving_car/" in file.filename:
                         if file.filename not in filenames:
-                            if "requirements.txt" in file.filename:
-                                setup_scripts(file.filename)
                             files.append(file)
                             filenames.append(file.filename)
         else:
             for file in commit.files:
                 if "selfdriving_car/" in file.filename:
                     if file.filename not in filenames:
-                        if "requirements.txt" in file.filename:
-                                setup_scripts(file.filename)
                         files.append(file)
                         filenames.append(file.filename)
     return files
@@ -187,6 +183,8 @@ def updater(files, repo):
             print("Downloading " + file.filename + " from " + file_link)
             prepare_dir(file.filename)
             wget.download(file_link, file.filename)
+            if "requirements.txt" in file.filename:
+                setup_scripts(file.filename)
         n_up += 1
     print("=============")
     print("Deployment complete!")
