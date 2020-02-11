@@ -36,6 +36,18 @@ def parse_config():
     return version
 
 '''
+Function: setup_scripts
+Args: -requirements_path: Path of requirements.txt file
+
+Description: Setup python libs specified on the requirements file
+
+'''
+
+def setup_scripts(requirements_path):
+    print("Instaling requirements...")
+    os.system("pip3 install -r " + requirements_path)
+
+'''
 Function: write_ver
 Args: -version: Version SHA Code
 
@@ -67,12 +79,16 @@ def get_files_commit(commits, sha):
                 for file in commit.files:
                     if "selfdriving_car/" in file.filename:
                         if file.filename not in filenames:
+                            if "requirements.txt" in file.filename:
+                                setup_scripts(file.filename)
                             files.append(file)
                             filenames.append(file.filename)
         else:
             for file in commit.files:
                 if "selfdriving_car/" in file.filename:
                     if file.filename not in filenames:
+                        if "requirements.txt" in file.filename:
+                                setup_scripts(file.filename)
                         files.append(file)
                         filenames.append(file.filename)
     return files
