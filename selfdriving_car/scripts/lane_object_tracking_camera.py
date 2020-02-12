@@ -4,7 +4,8 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 
-def whiteColorFilter (frame):
+
+def whiteColorFilter(frame):
 
     # It converts the BGR color space of image to HSV color space
     hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
@@ -17,57 +18,74 @@ def whiteColorFilter (frame):
 
     return mask_white
 
-def cannyFilter (frame):
+
+def cannyFilter(frame):
 
     frameGray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    frameBlur = cv.GaussianBlur(frameGray, (5,5) ,0)
-    frameEdge = cv.Canny(frameBlur,100,200)
+    frameBlur = cv.GaussianBlur(frameGray, (5, 5), 0)
+    frameEdge = cv.Canny(frameBlur, 100, 200)
 
     return frameEdge
 
-def regionOfInterest (frame):
+
+def regionOfInterest(frame):
     height = frame.shape[0]
-    trapeze = np.array([
-    [(500,height),(1300,height),(1100,600),(700,600)]
-    ])
+    lenght = frame.shape[1]
+
+    vertices = np.array([[(0.2 * lenght, 1 * height), (0.3 * lenght, 0.6 * height),
+                         (0.7 * lenght, 0.6 * height), (0.8 * lenght, 1 * height)]])
+    intVertices = vertices.astype(int)
+
+    print(*intVertices, sep = " , ")
+
     mask = np.zeros_like(frame)
-    cv.fillPoly(mask,trapeze,255)
-    maskedFrame = cv.bitwise_and(frame,mask)
+    cv.fillPoly(mask, intVertices, 255)
+    maskedFrame = cv.bitwise_and(frame, mask)
+    cv.imshow('6', mask)
     return maskedFrame
 
-def warp (frame):
+
+def warp(frame):
 
     height = frame.shape[0]
     lenght = frame.shape[1]
 
-#    Retangulo Final
+#    final area
 
-    dst = np.float32([
-    [(0,height),(lenght,height),(lenght,0),(0,0)]
-    ])
+    dst = np.float32([[(0 * lenght, 1 * height), (0 * lenght, 0 * height),
+                     (1 * lenght, 0 * height), (1 * lenght, 1 * height)]])
 
-#    Trapezio Inicial
+#    Inicial area
 
-    src =  np.float32([
-    [(500,height),(1300,height),(1100,600),(700,600)]
-    ])
+    src = np.float32([[(0.2 * lenght, 1 * height), (0.3 * lenght, 0.6 * height),
+                         (0.7 * lenght, 0.6 * height), (0.8 * lenght, 1 * height)]])
 
-    Z = cv.getPerspectiveTransform(src,dst)
-    warp = cv.warpPerspective(frame,Z,(lenght,height))
+    Z = cv.getPerspectiveTransform(src, dst)
+    warp = cv.warpPerspective(frame, Z, (lenght, height))
     return warp
 
+def createTrackBar():
+    cv.namedWindow("Trackbar")
+    cv.resizeWindow("Trackbar", 300, 200)
+    cv.createTrackbar("upperOffset", "Trackbar",0.5 , 1, 0)
+    cv.createTrackbar("lowerOffset", "Trackbar",0.5 , 1, 0)
 
-if __name__ == '__main__':
 
-    frame = cv.imread('test_image.jpg',1)
+def main ():
+    frame = cv.imread('Test_Image.jpeg', 1)
 
     white = whiteColorFilter(frame)
     canny = cannyFilter(frame)
-    whiteCanny = cv.bitwise_or(white,canny)
+    whiteCanny = cv.bitwise_or(white, canny)
     PolymaskWhiteCanny = regionOfInterest(whiteCanny)
-    warp = warp (PolymaskWhiteCanny)
+#    createTrackBar()
 
-    cv.imshow('yet',warp)
+    cv.imshow('5', frame)
     cv.waitKey(0)
-
     cv.destroyAllWindows()
+
+
+
+
+if __name__ == '__main__':
+    main()
