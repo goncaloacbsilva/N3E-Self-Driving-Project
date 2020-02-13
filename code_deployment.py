@@ -185,6 +185,9 @@ def updater(files, repo):
             wget.download(file_link, file.filename)
             if "requirements.txt" in file.filename:
                 setup_scripts(file.filename)
+            if ".py" in file.filename:
+                print("Executing: chmod +x " + file.filename)
+                os.system("chmod +x " + file.filename)
         n_up += 1
     print("=============")
     print("Deployment complete!")
