@@ -9,11 +9,9 @@ def whiteColorFilter(frame):
 
     # It converts the BGR color space of image to HSV color space
     hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
-
     # Threshold of white in HSV space
     lower_white = np.array([0, 0, 175])
     upper_white = np.array([255, 255, 255])
-
     mask_white = cv.inRange(hsv, lower_white, upper_white)
 
     return mask_white
@@ -36,12 +34,9 @@ def regionOfInterest(frame, x1_l, x1_r, x2_l, x2_r):
                           (x1_r * lenght, 0.6 * height), (x2_r * lenght, 1 * height)]])
     intVertices = vertices.astype(int)
 
-    print(*intVertices, sep=" , ")
-
     mask = np.zeros_like(frame)
     cv.fillPoly(mask, intVertices, 255)
     maskedFrame = cv.bitwise_and(frame, mask)
-    cv.imshow('6', mask)
     return maskedFrame
 
 
@@ -49,17 +44,14 @@ def warp(frame, x1_l, x1_r, x2_l, x2_r):
 
     height = frame.shape[0]
     lenght = frame.shape[1]
-
 #    final area
 
     dst = np.float32([[(0 * lenght, 1 * height), (0 * lenght, 0 * height),
                        (1 * lenght, 0 * height), (1 * lenght, 1 * height)]])
-
 #    Inicial area
 
     src = np.float32([[(x2_l * lenght, 1 * height), (x1_l * lenght, 0.65 * height),
                        (x1_r * lenght, 0.65 * height), (x2_r * lenght, 1 * height)]])
-
     Z = cv.getPerspectiveTransform(src, dst)
     return cv.warpPerspective(frame, Z, (lenght, height))
 
@@ -109,32 +101,66 @@ def getHist(frame):
 def findHistPeaks(hist):
 
     centerPoint = (hist.shape[0] // 2)
-    leftPeak = np.argmax(hist[:centerpoint])
-    rightPeak = np.argmax(hist[centerpoint:])
+    leftPeak = np.argmax(hist[:centerPoint])
+    rightPeak = np.argmax(hist[centerPoint:])
 
     return leftPeak, rightPeak
 
 
-def main():
-    frame = cv.imread('Test_Image.jpeg', 1)
+def slidingBox(frame, leftPeak, rightPeak, numberOfBoxes, boxMargin):
 
+    leftBoxPixels = []
+    leftBoxCenter = leftPeak
+    rightBoxCenter = rightPeak
+    boxHeight = frame.shape[0] // numberOfBoxes
+
+    for window in range(numberOfBoxes):
+
+        lowY = frame.shape[0] - (window * boxHeight)
+        upperY = lowY - boxHeight
+        leftBoxLeftX = leftBoxCenter - boxMargin
+        leftBoxRightX = leftBoxCenter + boxMargin
+        rightBoxLeftX = rightBoxCenter - boxMargin
+        rightBoxRightX = rightBoxCenter + boxMargin
+
+        if leftBoxLeftX < 0:
+            leftBoxLeftX = 0
+
+        cv.rectangle(frame, (leftBoxLeftX, lowY), (leftBoxRightX, upperY),
+                     (100, 255, 255), 1)
+
+        auxX = 0
+        leftBoxPixels.clear()
+        for y in range(upperY, lowY):
+            for x in range(leftBoxLeftX, rightBoxRightX):
+                if frame[y, x] != 0:
+                    leftBoxPixels.append(x)
+                auxX = auxX + 1
+
+        if len(leftBoxPixels) > 10:
+            leftBoxCenter = np.int(np.mean(np.array([leftBoxPixels])))
+
+    return frame
+
+
+def main():
+
+    frame = cv.imread('Test_Image.jpeg', 1)
     createTrackBar()
     onChangeTrackBar(0)
     x1_l, x1_r, x2_l, x2_r = percentageConverter(frame)
-    print(x1_l)
-    print(x1_r)
-    print(x2_r)
-    print(x2_l)
+
     while True:
         x1_l, x1_r, x2_l, x2_r = percentageConverter(frame)
         white = whiteColorFilter(frame)
         canny = cannyFilter(frame)
         whiteCanny = cv.bitwise_or(white, canny)
         warpFrame = warp(whiteCanny, x1_l, x1_r, x2_l, x2_r)
-        cv.imshow('WaprFrame', warpFrame)
-        cv.imshow('PolymaskWhiteCanny', whiteCanny)
         hist = getHist(warpFrame)
         leftPeak, rightPeak = findHistPeaks(hist)
+        final = slidingBox(warpFrame, leftPeak, rightPeak, 20, 100)
+        cv.imshow('WaprFrame', final)
+        cv.imshow('PolymaskWhiteCanny', whiteCanny)
         cv.waitKey()
 
     cv.destroyAllWindows()
