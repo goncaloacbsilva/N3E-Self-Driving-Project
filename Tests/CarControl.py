@@ -17,7 +17,7 @@ class Car(object):
         self.speed = 0
         self.direction = 0
         print("Opening Serial Port...")
-        self.device = serial.Serial('/dev/ttyS0', 115200)
+        self.device = serial.Serial('/dev/ttyACM0', 115200)
         print("Serial port opened (BAUD: 115200)")
         self.update()
 

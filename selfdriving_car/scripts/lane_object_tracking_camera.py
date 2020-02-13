@@ -4,6 +4,7 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def whiteColorFilter(frame):
 
     # It converts the BGR color space of image to HSV color space
@@ -27,15 +28,15 @@ def cannyFilter(frame):
     return frameEdge
 
 
-def regionOfInterest(frame):
+def regionOfInterest(frame, x1_l, x1_r, x2_l, x2_r):
     height = frame.shape[0]
     lenght = frame.shape[1]
 
-    vertices = np.array([[(0.2 * lenght, 1 * height), (0.3 * lenght, 0.6 * height),
-                         (0.7 * lenght, 0.6 * height), (0.8 * lenght, 1 * height)]])
+    vertices = np.array([[(x2_l * lenght, 1 * height), (x1_l * lenght, 0.6 * height),
+                          (x1_r * lenght, 0.6 * height), (x2_r * lenght, 1 * height)]])
     intVertices = vertices.astype(int)
 
-    print(*intVertices, sep = " , ")
+    print(*intVertices, sep=" , ")
 
     mask = np.zeros_like(frame)
     cv.fillPoly(mask, intVertices, 255)
@@ -44,7 +45,7 @@ def regionOfInterest(frame):
     return maskedFrame
 
 
-def warp(frame):
+def warp(frame, x1_l, x1_r, x2_l, x2_r):
 
     height = frame.shape[0]
     lenght = frame.shape[1]
@@ -52,46 +53,79 @@ def warp(frame):
 #    final area
 
     dst = np.float32([[(0 * lenght, 1 * height), (0 * lenght, 0 * height),
-                     (1 * lenght, 0 * height), (1 * lenght, 1 * height)]])
+                       (1 * lenght, 0 * height), (1 * lenght, 1 * height)]])
 
 #    Inicial area
 
-    src = np.float32([[(0.2 * lenght, 1 * height), (0.3 * lenght, 0.6 * height),
-                         (0.7 * lenght, 0.6 * height), (0.8 * lenght, 1 * height)]])
+    src = np.float32([[(x2_l * lenght, 1 * height), (x1_l * lenght, 0.65 * height),
+                       (x1_r * lenght, 0.65 * height), (x2_r * lenght, 1 * height)]])
 
     Z = cv.getPerspectiveTransform(src, dst)
     return cv.warpPerspective(frame, Z, (lenght, height))
 
+
 def createTrackBar():
     cv.namedWindow("Trackbar")
     cv.resizeWindow("Trackbar", 300, 200)
-    cv.createTrackbar("upperOffset", "Trackbar",0 , 100, onChangeTrackBar)
-    cv.createTrackbar("lowerOffset", "Trackbar",0 , 100, onChangeTrackBar)
+    cv.createTrackbar("upperOffset", "Trackbar", 60, 100, onChangeTrackBar)
+    cv.createTrackbar("lowerOffset", "Trackbar", 80, 100, onChangeTrackBar)
+
 
 def onChangeTrackBar(value):
-    global trackBar1Pos = cv.getTrackbarPos("upperOffset", "Trackbar");
-    global trackBar2Pos = cv.getTrackbarPos("lowerOffset", "Trackbar");
+    global trackBar1Pos
+    trackBar1Pos = cv.getTrackbarPos("upperOffset", "Trackbar")
+    print(trackBar1Pos)
+    global trackBar2Pos
+    trackBar2Pos = cv.getTrackbarPos("lowerOffset", "Trackbar")
+    print(trackBar2Pos)
 
-def percentageConverter ():
+
+def percentageConverter(frame):
+    global trackBar1Pos
+    global trackBar2Pos
+    length = frame.shape[1]
+    center = length / 2
+    x1_offset = center * trackBar1Pos / 100.0
+    x1_left = center - x1_offset
+    x1_right = center + x1_offset
+
+    x1_left = x1_left / length
+    x1_right = x1_right / length
+
+    x2_offset = center * trackBar2Pos / 100.0
+    x2_left = center - x2_offset
+    x2_right = center + x2_offset
+
+    x2_left = x2_left / length
+    x2_right = x2_right / length
+
+    return x1_left, x1_right, x2_left, x2_right
 
 
-
-def main ():
+def main():
     frame = cv.imread('Test_Image.jpeg', 1)
 
-    white = whiteColorFilter(frame)
-    canny = cannyFilter(frame)
-    whiteCanny = cv.bitwise_or(white, canny)
-    PolymaskWhiteCanny = regionOfInterest(whiteCanny)
-    warpFrame = warp(PolymaskWhiteCanny)
     createTrackBar()
+    onChangeTrackBar(0)
+    x1_l, x1_r, x2_l, x2_r = percentageConverter(frame)
+    print(x1_l)
+    print(x1_r)
+    print(x2_r)
+    print(x2_l)
+    flag = true
+    while flag = true:
+        x1_l, x1_r, x2_l, x2_r = percentageConverter(frame)
+        white = whiteColorFilter(frame)
+        canny = cannyFilter(frame)
+        whiteCanny = cv.bitwise_or(white, canny)
+        warpFrame = warp(whiteCanny, x1_l, x1_r, x2_l, x2_r)
+        cv.imshow('WaprFrame', warpFrame)
+        cv.imshow('PolymaskWhiteCanny', whiteCanny)
 
-    cv.imshow('5', warpFrame)
-    cv.waitKey(0)
     cv.destroyAllWindows()
 
 
-
-
 if __name__ == '__main__':
+    trackBar1Pos = 0
+    trackBar2Pos = 0
     main()
