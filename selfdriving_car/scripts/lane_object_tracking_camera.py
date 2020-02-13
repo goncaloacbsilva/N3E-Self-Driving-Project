@@ -4,7 +4,6 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 def whiteColorFilter(frame):
 
     # It converts the BGR color space of image to HSV color space
@@ -61,14 +60,20 @@ def warp(frame):
                          (0.7 * lenght, 0.6 * height), (0.8 * lenght, 1 * height)]])
 
     Z = cv.getPerspectiveTransform(src, dst)
-    warp = cv.warpPerspective(frame, Z, (lenght, height))
-    return warp
+    return cv.warpPerspective(frame, Z, (lenght, height))
 
 def createTrackBar():
     cv.namedWindow("Trackbar")
     cv.resizeWindow("Trackbar", 300, 200)
-    cv.createTrackbar("upperOffset", "Trackbar",0.5 , 1, 0)
-    cv.createTrackbar("lowerOffset", "Trackbar",0.5 , 1, 0)
+    cv.createTrackbar("upperOffset", "Trackbar",0 , 100, onChangeTrackBar)
+    cv.createTrackbar("lowerOffset", "Trackbar",0 , 100, onChangeTrackBar)
+
+def onChangeTrackBar(value):
+    global trackBar1Pos = cv.getTrackbarPos("upperOffset", "Trackbar");
+    global trackBar2Pos = cv.getTrackbarPos("lowerOffset", "Trackbar");
+
+def percentageConverter ():
+
 
 
 def main ():
@@ -78,9 +83,10 @@ def main ():
     canny = cannyFilter(frame)
     whiteCanny = cv.bitwise_or(white, canny)
     PolymaskWhiteCanny = regionOfInterest(whiteCanny)
-#    createTrackBar()
+    warpFrame = warp(PolymaskWhiteCanny)
+    createTrackBar()
 
-    cv.imshow('5', frame)
+    cv.imshow('5', warpFrame)
     cv.waitKey(0)
     cv.destroyAllWindows()
 
