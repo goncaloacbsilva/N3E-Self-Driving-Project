@@ -74,10 +74,8 @@ def createTrackBar():
 def onChangeTrackBar(value):
     global trackBar1Pos
     trackBar1Pos = cv.getTrackbarPos("upperOffset", "Trackbar")
-    print(trackBar1Pos)
     global trackBar2Pos
     trackBar2Pos = cv.getTrackbarPos("lowerOffset", "Trackbar")
-    print(trackBar2Pos)
 
 
 def percentageConverter(frame):
@@ -102,6 +100,21 @@ def percentageConverter(frame):
     return x1_left, x1_right, x2_left, x2_right
 
 
+def getHist(frame):
+    # Makes Histogram of the botton half of the frame
+    hist = np.sum(frame[frame.shape[0] // 2:, :], axis=0)
+    return hist
+
+
+def findHistPeaks(hist):
+
+    centerPoint = (hist.shape[0] // 2)
+    leftPeak = np.argmax(hist[:centerpoint])
+    rightPeak = np.argmax(hist[centerpoint:])
+
+    return leftPeak, rightPeak
+
+
 def main():
     frame = cv.imread('Test_Image.jpeg', 1)
 
@@ -112,8 +125,7 @@ def main():
     print(x1_r)
     print(x2_r)
     print(x2_l)
-    flag = true
-    while flag = true:
+    while True:
         x1_l, x1_r, x2_l, x2_r = percentageConverter(frame)
         white = whiteColorFilter(frame)
         canny = cannyFilter(frame)
@@ -121,6 +133,9 @@ def main():
         warpFrame = warp(whiteCanny, x1_l, x1_r, x2_l, x2_r)
         cv.imshow('WaprFrame', warpFrame)
         cv.imshow('PolymaskWhiteCanny', whiteCanny)
+        hist = getHist(warpFrame)
+        leftPeak, rightPeak = findHistPeaks(hist)
+        cv.waitKey()
 
     cv.destroyAllWindows()
 
