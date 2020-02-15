@@ -7,9 +7,12 @@ import matplotlib.pyplot as plt
 
 def whiteColorFilter(frame):
 
-    # It converts the BGR color space of image to HSV color space
+    # Convert the BGR color space of image to HSV color space
+
     hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+
     # Threshold of white in HSV space
+
     lower_white = np.array([0, 0, 175])
     upper_white = np.array([255, 255, 255])
     mask_white = cv.inRange(hsv, lower_white, upper_white)
@@ -33,37 +36,43 @@ def regionOfInterest(frame, x1_l, x1_r, x2_l, x2_r):
     vertices = np.array([[(x2_l * lenght, 1 * height), (x1_l * lenght, 0.6 * height),
                           (x1_r * lenght, 0.6 * height), (x2_r * lenght, 1 * height)]])
     intVertices = vertices.astype(int)
-
     mask = np.zeros_like(frame)
     cv.fillPoly(mask, intVertices, 255)
     maskedFrame = cv.bitwise_and(frame, mask)
     return maskedFrame
 
 
-def warp(frame, x1_l, x1_r, x2_l, x2_r):
+def birdView(frame, x1_l, x1_r, x2_l, x2_r):
+
+    # Setup inicial variables
 
     height = frame.shape[0]
     lenght = frame.shape[1]
-#    final area
 
-    dst = np.float32([[(0 * lenght, 1 * height), (0 * lenght, 0 * height),
-                       (1 * lenght, 0 * height), (1 * lenght, 1 * height)]])
-#    Inicial area
+    # Inicial points for bird view transform
 
     src = np.float32([[(x2_l * lenght, 1 * height), (x1_l * lenght, 0.65 * height),
                        (x1_r * lenght, 0.65 * height), (x2_r * lenght, 1 * height)]])
-    Z = cv.getPerspectiveTransform(src, dst)
-    return cv.warpPerspective(frame, Z, (lenght, height))
+
+    # Final points for bird view transform
+
+    dst = np.float32([[(0 * lenght, 1 * height), (0 * lenght, 0 * height),
+                       (1 * lenght, 0 * height), (1 * lenght, 1 * height)]])
+
+    birdTransford = cv.getPerspectiveTransform(src, dst)
+    return cv.warpPerspective(frame, birdTransford, (lenght, height))
 
 
 def createTrackBar():
+
     cv.namedWindow("Trackbar")
     cv.resizeWindow("Trackbar", 300, 200)
-    cv.createTrackbar("upperOffset", "Trackbar", 60, 100, onChangeTrackBar)
-    cv.createTrackbar("lowerOffset", "Trackbar", 80, 100, onChangeTrackBar)
+    cv.createTrackbar("upperOffset", "Trackbar", 15, 100, onChangeTrackBar)
+    cv.createTrackbar("lowerOffset", "Trackbar", 85, 100, onChangeTrackBar)
 
 
 def onChangeTrackBar(value):
+
     global trackBar1Pos
     trackBar1Pos = cv.getTrackbarPos("upperOffset", "Trackbar")
     global trackBar2Pos
@@ -71,8 +80,12 @@ def onChangeTrackBar(value):
 
 
 def percentageConverter(frame):
+
     global trackBar1Pos
     global trackBar2Pos
+
+    # Converts number from 0 - 100 to pixel coordenates
+
     length = frame.shape[1]
     center = length / 2
     x1_offset = center * trackBar1Pos / 100.0
@@ -93,80 +106,225 @@ def percentageConverter(frame):
 
 
 def getHist(frame):
+
     # Makes Histogram of the botton half of the frame
+
     hist = np.sum(frame[frame.shape[0] // 2:, :], axis=0)
     return hist
 
 
 def findHistPeaks(hist):
 
+    # Find the two peak is the histogram
+
     centerPoint = (hist.shape[0] // 2)
     leftPeak = np.argmax(hist[:centerPoint])
-    rightPeak = np.argmax(hist[centerPoint:])
+    rightPeak = np.argmax(hist[centerPoint:]) + centerPoint
 
     return leftPeak, rightPeak
 
 
 def slidingBox(frame, leftPeak, rightPeak, numberOfBoxes, boxMargin):
 
-    leftBoxPixels = []
+    # Declaring necessary arrays
+
+    leftBoxPixelsX = []
+    leftBoxPixelsY = []
+    tempLeftBoxPixelsX = []
+    tempLeftBoxPixelsY = []
+
+    rightBoxPixelsX = []
+    rightBoxPixelsY = []
+    tempRightBoxPixelsX = []
+    tempRightBoxPixelsY = []
+
+    # Getting some inicial values
+
     leftBoxCenter = leftPeak
     rightBoxCenter = rightPeak
     boxHeight = frame.shape[0] // numberOfBoxes
 
+    # Start internal frame
+
+    warp_zero = np.zeros_like(frame).astype(np.uint8)
+    color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+
+    # Loops that goes thourgh all the boxes
+
     for window in range(numberOfBoxes):
+
+        # Determine X and Y coordenates of next couple of boxes
 
         lowY = frame.shape[0] - (window * boxHeight)
         upperY = lowY - boxHeight
+
         leftBoxLeftX = leftBoxCenter - boxMargin
         leftBoxRightX = leftBoxCenter + boxMargin
+
         rightBoxLeftX = rightBoxCenter - boxMargin
         rightBoxRightX = rightBoxCenter + boxMargin
+
+        # Make sure the values down go beyond the window
+
+        if upperY < 0:
+            upperY = 0
+        if lowY > frame.shape[0]:
+            lowY = frame.shape[0]
 
         if leftBoxLeftX < 0:
             leftBoxLeftX = 0
 
-        cv.rectangle(frame, (leftBoxLeftX, lowY), (leftBoxRightX, upperY),
+        if rightBoxRightX > frame.shape[1]:
+            rightBoxRightX = frame.shape[1]
+
+        # Show boxes in the screen
+
+        cv.rectangle(color_warp, (leftBoxLeftX, lowY), (leftBoxRightX, upperY),
+                     (100, 255, 255), 1)
+        cv.rectangle(color_warp, (rightBoxLeftX, lowY), (rightBoxRightX, upperY),
                      (100, 255, 255), 1)
 
-        auxX = 0
-        leftBoxPixels.clear()
-        for y in range(upperY, lowY):
-            for x in range(leftBoxLeftX, rightBoxRightX):
-                if frame[y, x] != 0:
-                    leftBoxPixels.append(x)
-                auxX = auxX + 1
+        # creates array with all of the X and Y coordenates of the pixels in the box
 
-        if len(leftBoxPixels) > 10:
-            leftBoxCenter = np.int(np.mean(np.array([leftBoxPixels])))
+        tempLeftBoxPixelsX.clear()
+        tempLeftBoxPixelsY.clear()
+        for y in range(upperY, lowY):
+            for x in range(leftBoxLeftX, leftBoxRightX):
+                if frame[y, x] != 0:
+                    tempLeftBoxPixelsX.append(x)
+                    tempLeftBoxPixelsY.append(y)
+                    leftBoxPixelsX.append(x)
+                    leftBoxPixelsY.append(y)
+
+        tempRightBoxPixelsX.clear()
+        tempRightBoxPixelsY.clear()
+        for y in range(upperY, lowY):
+            for x in range(rightBoxLeftX, rightBoxRightX):
+                if frame[y, x] != 0:
+                    tempRightBoxPixelsX.append(x)
+                    tempRightBoxPixelsY.append(y)
+                    rightBoxPixelsX.append(x)
+                    rightBoxPixelsY.append(y)
+
+        # Update center of next boxes, but there
+        # needs to be at least 10 pixels in the box
+
+        if len(tempLeftBoxPixelsX) > 10:
+            leftBoxCenter = np.int(np.mean(np.array([tempLeftBoxPixelsX])))
+
+        if len(tempRightBoxPixelsX) > 10:
+            rightBoxCenter = np.int(np.mean(np.array([tempRightBoxPixelsX])))
+
+    # Get all lines polynomes and determine average
+    if len(leftBoxPixelsX) > 3 or len(leftBoxPixelsY) > 3:
+        leftPoly = np.polyfit(leftBoxPixelsY, leftBoxPixelsX, 2)
+        leftPoly[0] = np.mean(leftPoly[0])
+        leftPoly[1] = np.mean(leftPoly[1])
+        leftPoly[2] = np.mean(leftPoly[2])
+
+    if len(rightBoxPixelsX) > 3 or len(rightBoxPixelsY) > 3:
+        rightPoly = np.polyfit(rightBoxPixelsY, rightBoxPixelsX, 2)
+        rightPoly[0] = np.mean(rightPoly[0])
+        rightPoly[1] = np.mean(rightPoly[1])
+        rightPoly[2] = np.mean(rightPoly[2])
+
+    # Find line coordenates in order to draw Polinomial line
+
+    leftPolyY = np.linspace(0, frame.shape[0] - 1, frame.shape[0])
+    leftPolyX = leftPoly[0] * leftPolyY**2 + \
+        leftPoly[1] * leftPolyY + leftPoly[2]
+    leftPolyPoints = np.array(
+        [np.transpose(np.vstack([leftPolyX, leftPolyY]))])
+
+    rightPolyY = np.linspace(0, frame.shape[0] - 1, frame.shape[0])
+    rightPolyX = rightPoly[0] * rightPolyY**2 + \
+        rightPoly[1] * rightPolyY + rightPoly[2]
+    rightPolyPoints = np.array(
+        [np.transpose(np.vstack([rightPolyX, rightPolyY]))])
+
+    # Show lines of curvature in screen
+
+    cv.polylines(color_warp, np.int32([leftPolyPoints]), isClosed=False, color=(
+        200, 255, 155), thickness=4)
+    cv.polylines(color_warp, np.int32([rightPolyPoints]), isClosed=False, color=(
+        200, 255, 155), thickness=4)
+
+    # Add both images together
+
+    frame = cv.cvtColor(frame, cv.COLOR_GRAY2RGB)
+    frame = cv.addWeighted(frame, 0.7, color_warp, 0.8, 0)
+
+    calculateCurvature(color_warp, leftPoly, leftPeak)
 
     return frame
 
 
+def calculateCurvature(frame, Polinome, Peak):
+
+    # Determine distance that corresponds to one pixel
+
+    distancePerPixelX = 15.0 / frame.shape[1]
+    distancePerPixelY = 3.7 / frame.shape[0]
+
+    # Find first and second derivative of Polinomial equacion
+
+    D1 = (2 * Polinome[0] * Peak + Polinome[1]) * \
+        (distancePerPixelX / distancePerPixelY)
+    D2 = (2 * Polinome[0]) * (distancePerPixelX / distancePerPixelY)
+
+    # Use the circle radius and curve angle
+
+    curve = ((1 + D1 * D1)**(3 / 2)) / np.absolute(D2)
+    angle = 18000 / (3.14 * curve)
+    print (angle)
+
+    return angle, curve
+
+
+def drawLines(frame, x1_l, x1_r, x2_l, x2_r):
+
+    z = int(frame.shape[0] * 0.65)
+    cv.line(frame, (int(x1_l*frame.shape[1]), z), (int(x2_l * frame.shape[1]), frame.shape[0]), (0, 255, 255))
+    cv.line(frame, (int(x1_r*frame.shape[1]), z), (int(x2_r * frame.shape[1]), frame.shape[0]), (0, 255, 255))
+
+    return frame
+
+def getFrameFromVideo(vidcap):
+
+    success,frame = vidcap.read()
+    if success:
+        return frame
+
+    return 0
+
 def main():
 
-    frame = cv.imread('Test_Image.jpeg', 1)
+    vidcap = cv.VideoCapture('test_video.mp4')
+    frame=getFrameFromVideo(vidcap)
     createTrackBar()
     onChangeTrackBar(0)
-    x1_l, x1_r, x2_l, x2_r = percentageConverter(frame)
 
     while True:
+        frame=getFrameFromVideo(vidcap)
         x1_l, x1_r, x2_l, x2_r = percentageConverter(frame)
-        white = whiteColorFilter(frame)
-        canny = cannyFilter(frame)
-        whiteCanny = cv.bitwise_or(white, canny)
-        warpFrame = warp(whiteCanny, x1_l, x1_r, x2_l, x2_r)
-        hist = getHist(warpFrame)
-        leftPeak, rightPeak = findHistPeaks(hist)
-        final = slidingBox(warpFrame, leftPeak, rightPeak, 20, 100)
-        cv.imshow('WaprFrame', final)
-        cv.imshow('PolymaskWhiteCanny', whiteCanny)
-        cv.waitKey()
+        white=whiteColorFilter(frame)
+        canny=cannyFilter(frame)
+        whiteCanny=cv.bitwise_or(white, canny)
+        birdFrame=birdView(whiteCanny, x1_l, x1_r, x2_l, x2_r)
+        hist=getHist(birdFrame)
+        leftPeak, rightPeak=findHistPeaks(hist)
+        final=slidingBox(birdFrame, leftPeak, rightPeak, 15, 100)
+        frameWithLines=drawLines(frame, x1_l, x1_r, x2_l, x2_r)
+        cv.imshow('OPENCV TEST2', frameWithLines)
+        cv.imshow('OPENCV TEST1', final)
+        k=cv.waitKey(1)
+        if k == 32:
+            break
 
     cv.destroyAllWindows()
 
 
 if __name__ == '__main__':
-    trackBar1Pos = 0
-    trackBar2Pos = 0
+    trackBar1Pos=0
+    trackBar2Pos=0
     main()
