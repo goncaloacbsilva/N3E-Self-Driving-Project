@@ -3,6 +3,8 @@
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
+import pyzed.sl as sl
+import sys
 
 
 def whiteColorFilter(frame):
@@ -46,13 +48,17 @@ def birdView(frame, x1_l, x1_r, x2_l, x2_r):
 
     # Setup inicial variables
 
+    global trackBar3Pos
+    global trackBar4Pos
+    global trackBar5Pos
+
     height = frame.shape[0]
     lenght = frame.shape[1]
 
     # Inicial points for bird view transform
 
-    src = np.float32([[(x2_l * lenght, 1 * height), (x1_l * lenght, 0.65 * height),
-                       (x1_r * lenght, 0.65 * height), (x2_r * lenght, 1 * height)]])
+    src = np.float32([[(x2_l * lenght + (trackBar5Pos - lenght / 2), trackBar3Pos), (x1_l * lenght + (trackBar5Pos - lenght / 2), trackBar4Pos),
+                       (x1_r * lenght + (trackBar5Pos - lenght / 2), trackBar4Pos), (x2_r * lenght + (trackBar5Pos - lenght / 2), trackBar3Pos)]])
 
     # Final points for bird view transform
 
@@ -63,12 +69,18 @@ def birdView(frame, x1_l, x1_r, x2_l, x2_r):
     return cv.warpPerspective(frame, birdTransford, (lenght, height))
 
 
-def createTrackBar():
+def createTrackBar(frame):
 
     cv.namedWindow("Trackbar")
-    cv.resizeWindow("Trackbar", 300, 200)
+#    cv.resizeWindow("Trackbar", 300, 200)
     cv.createTrackbar("upperOffset", "Trackbar", 15, 100, onChangeTrackBar)
     cv.createTrackbar("lowerOffset", "Trackbar", 85, 100, onChangeTrackBar)
+    cv.createTrackbar("lowerY", "Trackbar",
+                      frame.shape[0] - 2, frame.shape[0], onChangeTrackBar)
+    cv.createTrackbar("upperY", "Trackbar",
+                      frame.shape[0] - 300, frame.shape[0], onChangeTrackBar)
+    cv.createTrackbar("offset", "Trackbar",
+                      int(frame.shape[1] / 2), frame.shape[1], onChangeTrackBar)
 
 
 def onChangeTrackBar(value):
@@ -77,6 +89,12 @@ def onChangeTrackBar(value):
     trackBar1Pos = cv.getTrackbarPos("upperOffset", "Trackbar")
     global trackBar2Pos
     trackBar2Pos = cv.getTrackbarPos("lowerOffset", "Trackbar")
+    global trackBar3Pos
+    trackBar3Pos = cv.getTrackbarPos("lowerY", "Trackbar")
+    global trackBar4Pos
+    trackBar4Pos = cv.getTrackbarPos("upperY", "Trackbar")
+    global trackBar5Pos
+    trackBar5Pos = cv.getTrackbarPos("offset", "Trackbar")
 
 
 def percentageConverter(frame):
@@ -173,7 +191,11 @@ def slidingBox(frame, leftPeak, rightPeak, numberOfBoxes, boxMargin):
 
         if leftBoxLeftX < 0:
             leftBoxLeftX = 0
+        if leftBoxRightX > frame.shape[1]:
+            leftBoxRightX = frame.shape[1]
 
+        if rightBoxLeftX < 0:
+            rightBoxLeftX = 0
         if rightBoxRightX > frame.shape[1]:
             rightBoxRightX = frame.shape[1]
 
@@ -222,39 +244,40 @@ def slidingBox(frame, leftPeak, rightPeak, numberOfBoxes, boxMargin):
         leftPoly[1] = np.mean(leftPoly[1])
         leftPoly[2] = np.mean(leftPoly[2])
 
+        # Find line coordenates in order to draw Polinomial line
+
+        leftPolyY = np.linspace(0, frame.shape[0] - 1, frame.shape[0])
+        leftPolyX = leftPoly[0] * leftPolyY**2 + \
+            leftPoly[1] * leftPolyY + leftPoly[2]
+        leftPolyPoints = np.array(
+            [np.transpose(np.vstack([leftPolyX, leftPolyY]))])
+
+        cv.polylines(color_warp, np.int32([leftPolyPoints]), isClosed=False, color=(
+            200, 255, 155), thickness=4)
+
+        calculateCurvature(color_warp, leftPoly, leftPeak)
+
     if len(rightBoxPixelsX) > 3 or len(rightBoxPixelsY) > 3:
         rightPoly = np.polyfit(rightBoxPixelsY, rightBoxPixelsX, 2)
         rightPoly[0] = np.mean(rightPoly[0])
         rightPoly[1] = np.mean(rightPoly[1])
         rightPoly[2] = np.mean(rightPoly[2])
 
-    # Find line coordenates in order to draw Polinomial line
+        # Find line coordenates in order to draw Polinomial line
 
-    leftPolyY = np.linspace(0, frame.shape[0] - 1, frame.shape[0])
-    leftPolyX = leftPoly[0] * leftPolyY**2 + \
-        leftPoly[1] * leftPolyY + leftPoly[2]
-    leftPolyPoints = np.array(
-        [np.transpose(np.vstack([leftPolyX, leftPolyY]))])
+        rightPolyY = np.linspace(0, frame.shape[0] - 1, frame.shape[0])
+        rightPolyX = rightPoly[0] * rightPolyY**2 + \
+            rightPoly[1] * rightPolyY + rightPoly[2]
+        rightPolyPoints = np.array(
+            [np.transpose(np.vstack([rightPolyX, rightPolyY]))])
 
-    rightPolyY = np.linspace(0, frame.shape[0] - 1, frame.shape[0])
-    rightPolyX = rightPoly[0] * rightPolyY**2 + \
-        rightPoly[1] * rightPolyY + rightPoly[2]
-    rightPolyPoints = np.array(
-        [np.transpose(np.vstack([rightPolyX, rightPolyY]))])
-
-    # Show lines of curvature in screen
-
-    cv.polylines(color_warp, np.int32([leftPolyPoints]), isClosed=False, color=(
-        200, 255, 155), thickness=4)
-    cv.polylines(color_warp, np.int32([rightPolyPoints]), isClosed=False, color=(
-        200, 255, 155), thickness=4)
+        cv.polylines(color_warp, np.int32([rightPolyPoints]), isClosed=False, color=(
+            200, 255, 155), thickness=4)
 
     # Add both images together
 
     frame = cv.cvtColor(frame, cv.COLOR_GRAY2RGB)
     frame = cv.addWeighted(frame, 0.7, color_warp, 0.8, 0)
-
-    calculateCurvature(color_warp, leftPoly, leftPeak)
 
     return frame
 
@@ -276,48 +299,71 @@ def calculateCurvature(frame, Polinome, Peak):
 
     curve = ((1 + D1 * D1)**(3 / 2)) / np.absolute(D2)
     angle = 18000 / (3.14 * curve)
-    print (angle)
+    print(angle)
 
     return angle, curve
 
 
 def drawLines(frame, x1_l, x1_r, x2_l, x2_r):
 
-    z = int(frame.shape[0] * 0.65)
-    cv.line(frame, (int(x1_l*frame.shape[1]), z), (int(x2_l * frame.shape[1]), frame.shape[0]), (0, 255, 255))
-    cv.line(frame, (int(x1_r*frame.shape[1]), z), (int(x2_r * frame.shape[1]), frame.shape[0]), (0, 255, 255))
+    global trackBar3Pos
+    global trackBar4Pos
+    global trackBar5Pos
+
+
+    cv.line(frame, (int(x1_l * frame.shape[1] + (trackBar5Pos - frame.shape[1] / 2)), trackBar4Pos),(int(x2_l * frame.shape[1] + (trackBar5Pos - frame.shape[1] / 2)), trackBar3Pos), (0, 255, 255))
+
+    cv.line(frame, (int(x1_r * frame.shape[1] + (trackBar5Pos - frame.shape[1] / 2)), trackBar4Pos),(int(x2_r * frame.shape[1] + (trackBar5Pos - frame.shape[1] / 2)), trackBar3Pos), (0, 255, 255))
 
     return frame
 
-def getFrameFromVideo(vidcap):
-
-    success,frame = vidcap.read()
-    if success:
-        return frame
-
-    return 0
 
 def main():
 
-    vidcap = cv.VideoCapture('test_video.mp4')
-    frame=getFrameFromVideo(vidcap)
-    createTrackBar()
+    # Magical camera setup made by the gods at ZED
+
+    zed = sl.Camera()
+    input_type = sl.InputType()
+    if len(sys.argv) >= 2:
+        input_type.set_from_svo_file(sys.argv[1])
+    init = sl.InitParameters(input_t=input_type)
+    init.camera_resolution = sl.RESOLUTION.HD1080
+    init.depth_mode = sl.DEPTH_MODE.PERFORMANCE
+    init.coordinate_units = sl.UNIT.MILLIMETER
+
+    zed.open(init)
+
+    runtime = sl.RuntimeParameters()
+    runtime.sensing_mode = sl.SENSING_MODE.STANDARD
+
+    image_size = zed.get_camera_information().camera_resolution
+    image_size.width = image_size.width / 2
+    image_size.height = image_size.height / 2
+    image_zed = sl.Mat(image_size.width, image_size.height, sl.MAT_TYPE.U8_C4)
+
+    zed.grab(runtime)
+    zed.retrieve_image(image_zed, sl.VIEW.LEFT, sl.MEM.CPU, image_size)
+    frame = image_zed.get_data()
+
+    createTrackBar(frame)
     onChangeTrackBar(0)
 
     while True:
-        frame=getFrameFromVideo(vidcap)
+        zed.grab(runtime)
+        zed.retrieve_image(image_zed, sl.VIEW.LEFT, sl.MEM.CPU, image_size)
+        frame = image_zed.get_data()
         x1_l, x1_r, x2_l, x2_r = percentageConverter(frame)
-        white=whiteColorFilter(frame)
-        canny=cannyFilter(frame)
-        whiteCanny=cv.bitwise_or(white, canny)
-        birdFrame=birdView(whiteCanny, x1_l, x1_r, x2_l, x2_r)
-        hist=getHist(birdFrame)
-        leftPeak, rightPeak=findHistPeaks(hist)
-        final=slidingBox(birdFrame, leftPeak, rightPeak, 15, 100)
-        frameWithLines=drawLines(frame, x1_l, x1_r, x2_l, x2_r)
+        white = whiteColorFilter(frame)
+        canny = cannyFilter(frame)
+        whiteCanny = cv.bitwise_or(white, canny)
+        birdFrame = birdView(whiteCanny, x1_l, x1_r, x2_l, x2_r)
+        hist = getHist(birdFrame)
+        leftPeak, rightPeak = findHistPeaks(hist)
+        final = slidingBox(birdFrame, leftPeak, rightPeak, 15, 100)
+        frameWithLines = drawLines(frame, x1_l, x1_r, x2_l, x2_r)
         cv.imshow('OPENCV TEST2', frameWithLines)
         cv.imshow('OPENCV TEST1', final)
-        k=cv.waitKey(1)
+        k = cv.waitKey(30)
         if k == 32:
             break
 
@@ -325,6 +371,6 @@ def main():
 
 
 if __name__ == '__main__':
-    trackBar1Pos=0
-    trackBar2Pos=0
+    trackBar1Pos = 0
+    trackBar2Pos = 0
     main()
