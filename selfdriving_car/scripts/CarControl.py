@@ -3,7 +3,9 @@ import string
 import json
 import random
 
-def randomStringDigits(stringLength=6):
+
+
+def randomKey(stringLength=6):
     """Generate a random string of letters and digits """
     lettersAndDigits = string.ascii_letters + string.digits
     return ''.join(random.choice(lettersAndDigits) for i in range(stringLength))
@@ -31,7 +33,7 @@ class Car(object):
         self.direction = direction
 
     def send(self):
-        ir_code = randomStringDigits();
+        ir_code = randomKey();
         self.device.write(str("GET:"+ir_code+"&"+'\n').encode('UTF-8'))
         while True:
             data = self.device.readline()[:-2]
