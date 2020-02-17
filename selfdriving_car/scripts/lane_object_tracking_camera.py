@@ -2,10 +2,11 @@
 
 import cv2 as cv
 import numpy as np
+import rospy as ros
+from std_msgs.msg import String
 import matplotlib.pyplot as plt
 import pyzed.sl as sl
 import sys
-import time
 
 
 def whiteColorFilter(frame):
@@ -210,6 +211,7 @@ def slidingBox(frame, leftPeak, rightPeak, numberOfBoxes, boxMargin):
         cv.polylines(color_warp, np.int32([leftPolyPoints]), isClosed=False, color=(
             200, 255, 155), thickness=4)
 
+        print("--- Left Lane ---")
         calculateCurvature(color_warp, leftPoly, leftPeak)
 
     if len(rightLanePixelsX) > 3 or len(rightLanePixelsY) > 3:
@@ -221,12 +223,12 @@ def slidingBox(frame, leftPeak, rightPeak, numberOfBoxes, boxMargin):
         rightPolyY = np.linspace(0, frame.shape[0] - 1, frame.shape[0])
         rightPolyX = rightPoly[0] * rightPolyY**2 + \
             rightPoly[1] * rightPolyY + rightPoly[2]
-        rightPolyPoints = np.array(
-            [np.transpose(np.vstack([rightPolyX, rightPolyY]))])
+        rightPolyPoints = np.array([np.transpose(np.vstack([rightPolyX, rightPolyY]))])
 
         cv.polylines(color_warp, np.int32([rightPolyPoints]), isClosed=False, color=(
             200, 255, 155), thickness=4)
 
+        print("--- Right Lane ---")
         calculateCurvature(color_warp, rightPoly, rightPeak)
 
     # Add both images together
@@ -290,10 +292,16 @@ def main():
     image_size.height = image_size.height / 2
     image_zed = sl.Mat(image_size.width, image_size.height, sl.MAT_TYPE.U8_C4)
 
-    cap = cv.VideoCapture('test_video.mp4')
-    ret, frame1 = cap.read()
+    zed.grab(runtime)
+    zed.retrieve_image(image_zed, sl.VIEW.LEFT, sl.MEM.CPU, image_size)
+    frame = image_zed.get_data()
 
-    createTrackBar(frame1)
+    publisher = ros.Publisher('CamFeed', String, queue_size=10)
+    ros.init_node('CamFeed')
+    publisher.publish("hello world")
+#   r = ros.Rate(100) # 100hz
+
+    createTrackBar(frame)
     onChangeTrackBar(0)
 
     while True:
@@ -302,29 +310,28 @@ def main():
         zed.retrieve_image(image_zed, sl.VIEW.LEFT, sl.MEM.CPU, image_size)
         frame = image_zed.get_data()
 
-        ret, frame1 = cap.read()
-
-        x1_l, x1_r, x2_l, x2_r = percentageConverter(frame1)
-        white = whiteColorFilter(frame1)
-        canny = cannyFilter(frame1)
+        x1_l, x1_r, x2_l, x2_r = percentageConverter(frame)
+        white = whiteColorFilter(frame)
+        canny = cannyFilter(frame)
         whiteCanny = cv.bitwise_or(white, canny)
         birdFrame = birdView(whiteCanny, x1_l, x1_r, x2_l, x2_r)
         hist = getHist(birdFrame)
         leftPeak, rightPeak = findHistPeaks(hist)
         final = slidingBox(birdFrame, leftPeak, rightPeak, 15, 100)
-        frameWithLines = drawLines(frame1, x1_l, x1_r, x2_l, x2_r)
+        frameWithLines = drawLines(frame, x1_l, x1_r, x2_l, x2_r)
 
         scale_percent = 60
-        width = int(frame1.shape[1] * scale_percent / 100)
-        height = int(frame1.shape[0] * scale_percent / 100)
+        width = int(frame.shape[1] * scale_percent / 100)
+        height = int(frame.shape[0] * scale_percent / 100)
         dim = (width, height)
 
         resised1 = cv.resize(frameWithLines, dim)
         resised2 = cv.resize(final, dim)
 
-        vis = np.concatenate((resised1, resised2), axis=1)
+#        vis = np.concatenate((resised1, resised2), axis=1)
 
-        cv.imshow('OPENCV TEST1', vis)
+        cv.imshow('OPENCV TEST1', resised1)
+        cv.imshow('OPENCV TEST2', resised2)
 
         k = cv.waitKey(10)
         if k == 32:
