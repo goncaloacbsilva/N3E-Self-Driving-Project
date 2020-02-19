@@ -13,7 +13,7 @@ from std_msgs.msg import String
 def callback(data):
     global velocity
     global pub
-	v = velocity
+    v = velocity
     msg = str(v)+"/"+str(data.split("/")[1])
     rospy.loginfo(msg)
     pub.publish(msg)

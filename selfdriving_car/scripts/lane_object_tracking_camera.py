@@ -212,7 +212,7 @@ def slidingBox(frame, leftPeak, rightPeak, numberOfBoxes, boxMargin):
             200, 255, 155), thickness=4)
 
         print("--- Left Lane ---")
-        calculateCurvature(color_warp, leftPoly, leftPeak)
+        angle = calculateCurvature(color_warp, leftPoly, leftPeak)
 
     if len(rightLanePixelsX) > 3 or len(rightLanePixelsY) > 3:
         rightPoly = np.polyfit(rightLanePixelsY, rightLanePixelsX, 2)
@@ -235,7 +235,7 @@ def slidingBox(frame, leftPeak, rightPeak, numberOfBoxes, boxMargin):
     frame = cv.cvtColor(frame, cv.COLOR_GRAY2RGB)
     frame = cv.addWeighted(frame, 0.7, color_warp, 0.8, 0)
 
-    return frame
+    return frame, angle
 
 
 def calculateCurvature(frame, Polinome, Peak):
@@ -251,7 +251,7 @@ def calculateCurvature(frame, Polinome, Peak):
     angle = 18000 / (3.14 * curve)
     print(angle)
 
-    return angle, curve
+    return angle
 
 
 def drawLines(frame, x1_l, x1_r, x2_l, x2_r):
@@ -296,9 +296,8 @@ def main():
     zed.retrieve_image(image_zed, sl.VIEW.LEFT, sl.MEM.CPU, image_size)
     frame = image_zed.get_data()
 
-    publisher = ros.Publisher('CamFeed', String, queue_size=10)
+    publisher = ros.Publisher('Control_out', String, queue_size=10)
     ros.init_node('CamFeed')
-    publisher.publish("hello world")
 #   r = ros.Rate(100) # 100hz
 
     createTrackBar(frame)
@@ -317,8 +316,9 @@ def main():
         birdFrame = birdView(whiteCanny, x1_l, x1_r, x2_l, x2_r)
         hist = getHist(birdFrame)
         leftPeak, rightPeak = findHistPeaks(hist)
-        final = slidingBox(birdFrame, leftPeak, rightPeak, 15, 100)
+        final,angle = slidingBox(birdFrame, leftPeak, rightPeak, 15, 100)
         frameWithLines = drawLines(frame, x1_l, x1_r, x2_l, x2_r)
+        publisher.publish('0/'+ str(int(angle)))
 
         scale_percent = 60
         width = int(frame.shape[1] * scale_percent / 100)
@@ -329,7 +329,7 @@ def main():
         resised2 = cv.resize(final, dim)
 
 #        vis = np.concatenate((resised1, resised2), axis=1)
-
+        cv.imshow('WARP', birdFrame)
         cv.imshow('OPENCV TEST1', resised1)
         cv.imshow('OPENCV TEST2', resised2)
 
