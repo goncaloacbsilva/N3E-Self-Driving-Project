@@ -26,22 +26,21 @@ def init_module():
     rospy.Subscriber("Control_in", String, callback)
     HOST = '0.0.0.0'
     PORT = 5000
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((HOST, PORT))
-        print('[CONTROL NODE]: Waiting for connections at ' + str(HOST) + ":" + str(PORT))
-        s.listen()
-        conn, addr = s.accept()
-        with conn:
-            print('[CONTROL NODE]: Connected by', addr)
-            while True:
-                data = conn.recv(1024).decode("utf-8")
-                if not data:
-                    break
-                if data == "END":
-                    print('[CONTROL NODE]: Im shutting down...')
-                    break
-                print('[CONTROL NODE]: Received command: ', data)
-                velocity = data
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((HOST, PORT))
+    print('[CONTROL NODE]: Waiting for connections at ' + str(HOST) + ":" + str(PORT))
+    s.listen()
+    conn, addr = s.accept()
+    print('[CONTROL NODE]: Connected by', addr)
+    while True:
+        data = conn.recv(1024).decode("utf-8")
+        if not data:
+            break
+        if data == "END":
+            print('[CONTROL NODE]: Im shutting down...')
+            break
+        print('[CONTROL NODE]: Received command: ', data)
+        velocity = data
 
 
 if __name__ == '__main__':
