@@ -7,38 +7,45 @@
 import rospy
 import time
 import random
+import socket
 from std_msgs.msg import String
-import PID as pid_module
 
-def talker():
+def callback(data):
+    global velocity
+    global pub
+	v = velocity
+    msg = str(v)+"/"+str(data.split("/")[1])
+    rospy.loginfo(msg)
+    pub.publish(msg)
+
+def init_module():
+    global velocity
+    global pub
     pub = rospy.Publisher('Control_out', String, queue_size=10)
     rospy.init_node('control_node', anonymous=True)
-    rate = rospy.Rate(10) # 10hz
-    while not rospy.is_shutdown():
-	v = random.randint(0, 2)
-        msg = str(v)+"/"+str(stearAng)
-        rospy.loginfo(msg)
-        pub.publish(msg)
-	time.sleep(0.5)
-        rate.sleep()
+    rospy.Subscriber("Control_in", String, callback)
+    HOST = '0.0.0.0'
+    PORT = 5000
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((HOST, PORT))
+        print('[CONTROL NODE]: Waiting for connections at ' + str(HOST) + ":" + str(PORT))
+        s.listen()
+        conn, addr = s.accept()
+        with conn:
+            print('[CONTROL NODE]: Connected by', addr)
+            while True:
+                data = conn.recv(1024).decode("utf-8")
+                if not data:
+                    break
+                if data == "END":
+                    print('[CONTROL NODE]: Im shutting down...')
+                    break
+                print('[CONTROL NODE]: Received command: ', data)
+                velocity = data
 
-def main():
-    pid = pid_module.PID(P, I, D)
-    pid.SetPoint = posicaodesejada
-    pid.setSampleTime(1)
-    pid.udpate (posicaocarro)
-    stearAng = pid.output
-
-P = 2
-I = 4.0
-D = 0.1
-stearAng = 0
-
-posicaocarro=0
-posicaodesejada=1
 
 if __name__ == '__main__':
     try:
-        talker()
+        init_module()
     except rospy.ROSInterruptException:
-        main()
+        print("[CONTROL NODE]: Im shutting down...")
