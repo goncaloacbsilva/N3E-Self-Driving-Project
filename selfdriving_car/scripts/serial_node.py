@@ -21,9 +21,9 @@ def callback(data):
 def module_init():
     global car
     rospy.loginfo("Initializing Serial Node...")
-    car = CarControl.Car();
+    car = CarControl.Car()
     rospy.init_node('serial_node', anonymous=True)
-    rospy.Subscriber("Control_out", String, callback)
+    rospy.Subscriber("Control_out", String, callback,queue_size=1)
     rospy.spin()
 
 if __name__ == '__main__':

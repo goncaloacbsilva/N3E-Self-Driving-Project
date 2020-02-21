@@ -21,9 +21,9 @@ def callback(data):
 def init_module():
     global velocity
     global pub
-    pub = rospy.Publisher('Control_out', String, queue_size=10)
+    pub = rospy.Publisher('Control_out', String, queue_size=1)
     rospy.init_node('control_node', anonymous=True)
-    rospy.Subscriber("Control_in", String, callback)
+    rospy.Subscriber("Control_in", String, callback, queue_size=1)
     HOST = '0.0.0.0'
     PORT = 5000
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

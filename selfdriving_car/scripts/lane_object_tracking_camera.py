@@ -296,7 +296,7 @@ def main():
     zed.retrieve_image(image_zed, sl.VIEW.LEFT, sl.MEM.CPU, image_size)
     frame = image_zed.get_data()
 
-    publisher = ros.Publisher('Control_out', String, queue_size=10)
+    publisher = ros.Publisher('Control_out', String, queue_size=1)
     ros.init_node('CamFeed')
 #   r = ros.Rate(100) # 100hz
 
