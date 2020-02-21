@@ -143,6 +143,8 @@ def slidingBox(frame, leftPeak, rightPeak, numberOfBoxes, boxMargin):
     leftLaneNonZeroPixels = []
     rightLaneNonZeroPixels = []
 
+    angle = [0,0,0]
+
     # Getting some inicial values
 
     nonzero = frame.nonzero()
@@ -203,16 +205,16 @@ def slidingBox(frame, leftPeak, rightPeak, numberOfBoxes, boxMargin):
         leftPoly[2] = np.mean(leftPoly[2])
         # Find line coordenates in order to draw Polinomial line
         leftPolyY = np.linspace(0, frame.shape[0] - 1, frame.shape[0])
-        leftPolyX = leftPoly[0] * leftPolyY**2 + \
-            leftPoly[1] * leftPolyY + leftPoly[2]
-        leftPolyPoints = np.array(
-            [np.transpose(np.vstack([leftPolyX, leftPolyY]))])
+        leftPolyX = leftPoly[0] * leftPolyY**2 + leftPoly[1] * leftPolyY + leftPoly[2]
+        leftPolyPoints = np.array([np.transpose(np.vstack([leftPolyX, leftPolyY]))])
 
         cv.polylines(color_warp, np.int32([leftPolyPoints]), isClosed=False, color=(
             200, 255, 155), thickness=4)
 
         print("--- Left Lane ---")
-        angle = calculateCurvature(color_warp, leftPoly, leftPeak)
+        angle[1] = calculateCurvature(color_warp, leftPoly, leftPeak)
+        if leftPoly[0]<0:
+            angle[1]=-angle[1]
 
     if len(rightLanePixelsX) > 3 or len(rightLanePixelsY) > 3:
         rightPoly = np.polyfit(rightLanePixelsY, rightLanePixelsX, 2)
@@ -221,21 +223,24 @@ def slidingBox(frame, leftPeak, rightPeak, numberOfBoxes, boxMargin):
         rightPoly[2] = np.mean(rightPoly[2])
         # Find line coordenates in order to draw Polinomial line
         rightPolyY = np.linspace(0, frame.shape[0] - 1, frame.shape[0])
-        rightPolyX = rightPoly[0] * rightPolyY**2 + \
-            rightPoly[1] * rightPolyY + rightPoly[2]
+        rightPolyX = rightPoly[0] * rightPolyY**2 + rightPoly[1] * rightPolyY + rightPoly[2]
         rightPolyPoints = np.array([np.transpose(np.vstack([rightPolyX, rightPolyY]))])
 
         cv.polylines(color_warp, np.int32([rightPolyPoints]), isClosed=False, color=(
             200, 255, 155), thickness=4)
 
         print("--- Right Lane ---")
-        calculateCurvature(color_warp, rightPoly, rightPeak)
+        angle[2] = calculateCurvature(color_warp, rightPoly, rightPeak)
+        if rightPoly[0]<0:
+            angle[2]=-angle[2]
 
     # Add both images together
     frame = cv.cvtColor(frame, cv.COLOR_GRAY2RGB)
     frame = cv.addWeighted(frame, 0.7, color_warp, 0.8, 0)
 
-    return frame, angle
+    angle[0] = (angle[1] - angle[2])/2
+
+    return frame, angle[0]
 
 
 def calculateCurvature(frame, Polinome, Peak):
@@ -250,7 +255,6 @@ def calculateCurvature(frame, Polinome, Peak):
     curve = ((1 + D1 * D1)**(3 / 2)) / np.absolute(D2)
     angle = 18000 / (3.14 * curve)
     print(angle)
-
     return angle
 
 
@@ -271,7 +275,7 @@ def drawLines(frame, x1_l, x1_r, x2_l, x2_r):
 
 def main():
 
-        # Magical camera setup made by the gods at ZED
+    # Magical camera setup made by the gods at ZED
 
     zed = sl.Camera()
     input_type = sl.InputType()
@@ -298,7 +302,6 @@ def main():
 
     publisher = ros.Publisher('Control_in', String, queue_size=1)
     ros.init_node('CamFeed')
-#   r = ros.Rate(100) # 100hz
 
     createTrackBar(frame)
     onChangeTrackBar(0)
@@ -341,6 +344,4 @@ def main():
 
 
 if __name__ == '__main__':
-    trackBar1Pos = 0
-    trackBar2Pos = 0
     main()
