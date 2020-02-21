@@ -1,35 +1,32 @@
 #!/usr/bin/env python
-# Software License Agreement (BSD License)
-#
-# Copyright (c) 2008, Willow Garage, Inc.
-# All rights reserved.
 
 import rospy
 import time
 import random
 import socket
 from std_msgs.msg import String
+global pck_dat
+velocity = 0
+pck_dat = "0/3"
 
 def callback(data):
-    global velocity
+    global pck_dat
     global pub
-    v = velocity
-    msg = str(v)+"/"+str(data.split("/")[1])
-    rospy.loginfo(msg)
+    msg = str(pck_dat)+"/"+str(data.data.split("/")[1])
     pub.publish(msg)
 
 def init_module():
-    global velocity
+    global pck_dat
     global pub
-    pub = rospy.Publisher('Control_out', String, queue_size=1)
+    pub = rospy.Publisher('Control_out', String, queue_size=10)
     rospy.init_node('control_node', anonymous=True)
-    rospy.Subscriber("Control_in", String, callback, queue_size=1)
+    rospy.Subscriber("Control_in", String, callback)
     HOST = '0.0.0.0'
     PORT = 5000
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind((HOST, PORT))
-    print('[CONTROL NODE]: Waiting for connections at ' + str(HOST) + ":" + str(PORT))
-    s.listen()
+    rospy.loginfo('[CONTROL NODE]: Waiting for connections at ' + str(HOST) + ":" + str(PORT))
+    s.listen(20)
     conn, addr = s.accept()
     print('[CONTROL NODE]: Connected by', addr)
     while True:
@@ -37,14 +34,14 @@ def init_module():
         if not data:
             break
         if data == "END":
-            print('[CONTROL NODE]: Im shutting down...')
+            rospy.loginfo('[CONTROL NODE]: Im shutting down...')
             break
-        print('[CONTROL NODE]: Received command: ', data)
-        velocity = data
-
+        rospy.loginfo('[CONTROL NODE]: Received command: ' + data)
+        rospy.loginfo('[CONTROL NODE]: Velocity: ' + str(data.split("/")[0]) + " Direction: " + str(data.split("/")[1]))
+        pck_dat = data
 
 if __name__ == '__main__':
     try:
         init_module()
     except rospy.ROSInterruptException:
-        print("[CONTROL NODE]: Im shutting down...")
+        rospy.loginfo("[CONTROL NODE]: Im shutting down...")
