@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import cv2 as cv
 import numpy as np
@@ -296,7 +296,7 @@ def main():
     zed.retrieve_image(image_zed, sl.VIEW.LEFT, sl.MEM.CPU, image_size)
     frame = image_zed.get_data()
 
-    publisher = ros.Publisher('Control_out', String, queue_size=1)
+    publisher = ros.Publisher('Control_in', String, queue_size=1)
     ros.init_node('CamFeed')
 #   r = ros.Rate(100) # 100hz
 

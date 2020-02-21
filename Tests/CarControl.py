@@ -43,6 +43,7 @@ class Car(object):
         dataPKT = "POST:"+str(self.speed)+"&"+str(self.direction)+"S"+str(self.steering)
         print(dataPKT)
         self.device.write(str(dataPKT+'\n').encode('UTF-8'))
+        print("Post Complete")
 
     def cleanup(self):
         print("Closing Serial Port...")
