@@ -66,7 +66,6 @@ def birdView(frame, x1_l, x1_r, x2_l, x2_r):
 def createTrackBar(frame):
 
     cv.namedWindow("Trackbar")
-#    cv.resizeWindow("Trackbar", 300, 200)
     cv.createTrackbar("upperOffset", "Trackbar", 15, 100, onChangeTrackBar)
     cv.createTrackbar("lowerOffset", "Trackbar", 85, 100, onChangeTrackBar)
     cv.createTrackbar("lowerY", "Trackbar",
@@ -257,7 +256,6 @@ def calculateCurvature(frame, Polinome, Peak):
     print(angle)
     return angle
 
-
 def drawLines(frame, x1_l, x1_r, x2_l, x2_r):
 
     global trackBar3Pos
@@ -319,8 +317,25 @@ def main():
         birdFrame = birdView(whiteCanny, x1_l, x1_r, x2_l, x2_r)
         hist = getHist(birdFrame)
         leftPeak, rightPeak = findHistPeaks(hist)
-        final,angle = slidingBox(birdFrame, leftPeak, rightPeak, 15, 100)
+        final,rawAngle = slidingBox(birdFrame, leftPeak, rightPeak, 15, 100)
         frameWithLines = drawLines(frame, x1_l, x1_r, x2_l, x2_r)
+
+        angle = (rawAngle*45)/20
+
+        if angle > 45:
+            angle = 45
+        if angle < -45:
+            angle = -45
+
+        refereceLine = (rightPeak + leftPeak)//2
+
+        if abs((frame.shape[1]//2) - refereceLine) > 75:
+
+            if (frame.shape[1]//2) - refereceLine > 0:
+                angle = 45
+            elif (frame.shape[1]//2) - refereceLine < 0:
+                angle = -45
+
         publisher.publish('0/'+ str(int(angle)))
 
         scale_percent = 60
@@ -331,8 +346,6 @@ def main():
         resised1 = cv.resize(frameWithLines, dim)
         resised2 = cv.resize(final, dim)
 
-#        vis = np.concatenate((resised1, resised2), axis=1)
-        cv.imshow('WARP', birdFrame)
         cv.imshow('OPENCV TEST1', resised1)
         cv.imshow('OPENCV TEST2', resised2)
 
