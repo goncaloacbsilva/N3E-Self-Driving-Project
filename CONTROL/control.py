@@ -10,3 +10,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     while True:
         message = input("-> ")
         s.send(message.encode())
+        if message == "END":
+            print("Connection END")
+            break
+    s.close()
