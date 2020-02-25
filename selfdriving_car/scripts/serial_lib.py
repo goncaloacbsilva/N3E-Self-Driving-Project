@@ -7,7 +7,7 @@ def convert_speed(speed):
     return y;
 
 def convert_slope(angle):
-    angle = 45 - int(angle)
+    angle = 45 + int(angle)
     if angle < 0:
         angle = 0
     elif angle > 90:
