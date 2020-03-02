@@ -18,7 +18,7 @@ and velocity from camera node and send to matlab workspace"""
 
 totalstart = time.time()
 
-for p in range(10):
+for p in range(100):
 
     start = time.time()
 
