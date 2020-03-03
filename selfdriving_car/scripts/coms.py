@@ -17,7 +17,7 @@ def init_module():
     global pub
     global s
     pub = rospy.Publisher('Control_out', String, queue_size=1)
-    rospy.init_node('control_node', anonymous=True)
+    rospy.init_node('coms_node', anonymous=True)
     rospy.Subscriber("Control_in", String, callback,queue_size=1)
     HOST = '0.0.0.0'
     PORT = 5000
