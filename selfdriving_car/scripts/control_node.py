@@ -1,63 +1,62 @@
-#!/usr/bin/env python3
-
+import matlab.engine
 import rospy
 import time
-import random
-import socket
 from std_msgs.msg import String
-global pck_dat
-velocity = 0
-pck_dat = "0/3"
+
 
 def callback(data):
-    global pck_dat
-    global pub
-    msg = str(pck_dat)+"/"+str(data.data.split("/")[1])
-    pub.publish(msg)
 
-def init_module():
-    global pck_dat
-    global pub
-    global s
-    pub = rospy.Publisher('Control_out', String, queue_size=1)
-    rospy.init_node('control_node', anonymous=True)
-    rospy.Subscriber("Control_in", String, callback,queue_size=1)
-    HOST = '0.0.0.0'
-    PORT = 5005
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind((HOST, PORT))
-    rospy.loginfo('[CONTROL NODE]: Waiting for connections at ' + str(HOST) + ":" + str(PORT))
-    s.listen(5)
-    conn, addr = s.accept()
-    rospy.loginfo('[CONTROL NODE]: Connected by ' + str(addr[0])+":"+str(addr[1]))
-    while True:
-        s.settimeout(100)
-        rospy.loginfo("Socket Tiemout (SET): " + str(s.gettimeout()))
-        try:
-            data = conn.recv(1024).decode("utf-8")
-        except socket.timeout:
-            print("[CONTROL NODE]: Socket timeout! Shutting down...")
-            break
-        if not data:
-            break
-        if data == "END":
-            rospy.loginfo('[CONTROL NODE]: Im shutting down...')
-            break
-        rospy.loginfo('[CONTROL NODE]: Received command: ' + data)
-        rospy.loginfo('[CONTROL NODE]: Velocity: ' + str(data.split("/")[0]) + " Direction: " + str(data.split("/")[1]))
-        pck_dat = data
-    socket_shutdown()
+    msg = data.data
 
-def socket_shutdown():
-    global s
-    global pub
-    msg = "0/3"
-    pub.publish(msg)
-    s.close()
 
-if __name__ == '__main__':
-    try:
-        init_module()
-    except (rospy.ROSInterruptException, KeyboardInterrupt):
-        rospy.loginfo("[CONTROL NODE]: Im shutting down...")
-        socket_shutdown()
+# Initialize matlab
+eng = matlab.engine.start_matlab()
+# function that initializes the control model
+eng.init(nargout=0)
+# function that activates deactivate the compilation of the simulink model
+eng.fastMode(nargout=0)
+# function that executes the simulation of the simulink model with the purpose of initializing the model
+eng.simModel(nargout=0)
+# get the mpc time step for later use
+timeStep = eng.workspace['timeSample']
+
+# receive polynomial function, lateral deviation from center line,
+# and velocity from camera node and send to matlab workspace
+
+pub = rospy.Publisher('Control_in', String, queue_size=1)
+rospy.init_node('normal_control_node')
+
+while True:
+
+    start = time.time()
+
+    rospy.Subscriber("LineInfo", String, callback)
+
+    a, b, c, latdev = msg.split("/")
+
+    # Send the polynomial fuction to the matlab workspace
+    eng.workspace['a'] = a
+    eng.workspace['b'] = b
+    eng.workspace['c'] = c
+
+    # Run curvature script to calculate curvature and load it on matlab workspace
+    eng.curv(nargout=0)
+
+    # Send some parameters to the matlab workspace
+    eng.workspace['latDev'] = latdev
+
+    # Run the simulink model and get the ideal steerAng
+    eng.simModel(nargout=0)
+    steerAng = eng.workspace['steerAng']
+
+    pub.publish('0/' + str(int(steerAng)))
+
+    # Timer
+    end = time.time()
+    t = end - start
+    if t < timeStep:
+        time.sleep(timeStep-t)
+
+    if rospy.is_shutdown():
+        break
+
