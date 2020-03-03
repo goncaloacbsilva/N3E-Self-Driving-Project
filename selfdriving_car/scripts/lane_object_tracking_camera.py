@@ -304,8 +304,6 @@ def main():
     ret, frame = testVideo.read()
     if not ret:
         print("Can't receive frame (stream end?). Exiting ...")
-        cv.waitKey()
-        break
 
     publisher = ros.Publisher('LineInfo', String, queue_size=1)
     ros.init_node('CamFeed')
