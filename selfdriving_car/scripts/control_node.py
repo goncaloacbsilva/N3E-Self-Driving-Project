@@ -35,15 +35,15 @@ while True:
     a, b, c, latdev = msg.split("/")
 
     # Send the polynomial fuction to the matlab workspace
-    eng.workspace['a'] = a
-    eng.workspace['b'] = b
-    eng.workspace['c'] = c
+    eng.workspace['a'] = float(a)
+    eng.workspace['b'] = float(b)
+    eng.workspace['c'] = float(c)
 
     # Run curvature script to calculate curvature and load it on matlab workspace
     eng.curv(nargout=0)
 
     # Send some parameters to the matlab workspace
-    eng.workspace['latDev'] = latdev
+    eng.workspace['latDev'] = float(latdev)
 
     # Run the simulink model and get the ideal steerAng
     eng.simModel(nargout=0)

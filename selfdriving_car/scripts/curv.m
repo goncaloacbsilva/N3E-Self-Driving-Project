@@ -7,6 +7,9 @@
 
 %hold off %to delete , just for testing ASDA
 
+disp('curv started')
+tic; 
+
 x=linspace(0,Vx*Tm,10000);
 error = 0.05; %error for the interpolation
 
@@ -27,10 +30,10 @@ yo = c;
 xo = 0;
 
 %get df on the initial point
-dfinit = 2*a*xo+b;
+df_init = 2*a*xo+b;
 
 %get the relative yaw between the road and the car
-yawDev = arctan(dfinit);
+yawDev = atan(df_init);
 
 %setup curvature vector
 curvature = zeros(predHorizon, 1);
@@ -84,3 +87,6 @@ if a ~= 0
         yo=ynext;
     end
 end
+
+executionTime=toc
+disp('curv finished')
